@@ -40,7 +40,7 @@ void randPRA(struct disk *disk, struct page_table *pt, char *virtmem, char *phys
 void fifoPRA(struct disk *disk, struct page_table *pt, char *virtmem, char *physmem);
 void SfifoPRA(struct disk *disk, struct page_table *pt, char *virtmem, char *physmem);
 void customPRA(struct disk *disk, struct page_table *pt, char *virtmem, char *physmem);
-int findFreeFrame(struct disk *disk, struct page_table *pt, char *virtmem, char *physmem);
+int findFreeFrame(struct free_list *freeFrameList);
 
 void page_fault_handler( struct page_table *pt, int page)
 {
