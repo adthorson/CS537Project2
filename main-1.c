@@ -170,6 +170,51 @@ int main( int argc, char *argv[] )
  */
 void randPRA( struct page_table *pt, int page) {
     
+ int i, j, replacement=1;
+    int *frame;
+    int *bits;
+    
+    page_table_get_entry(pt, page, &frame, &bits);
+    
+	// If page fault occurred because a write was attempted to a read-only page, add PROT_WRITE bit
+    if (bits == PROT_READ) {
+        page_table_set_entry(pt, page, frame, PROT_READ|PROT_WRITE);
+    }
+	
+	
+	for (i=0; i < nframes; i++) {
+        if (PFDB[i].VPN == -1) {
+            PFDB[i].VPN = page;
+            replacement = 0;
+            break;
+        }
+    }
+	
+	if (replacement == 0) {
+        page_table_set_entry(pt, page, i, PROT_READ);
+        disk_read(disk, page, &physmem[i * BLOCK_SIZE]);
+    }
+	
+	if (replacement == 1) {
+		unsigned short seedv[3]// = {1,1,1};
+		seed48(seedv);
+		int randFrame = lrand48();
+        int removedPage = PFDB[randFrame].VPN;
+		
+		//NEED TO CHECK IF WRITE BIT IS SET
+		page_table_get_entry(pt, removedPage, frame, bits);
+        if (bits == PROT_READ|PROT_WRITE) {
+            disk_write(disk, removedPage, &physmem[frame * PAGE_SIZE]);
+        }
+        PFDB[randFrame].VPN = -1;
+    }    
+   
+    PFDB[nframes-1].VPN = page;                                 // set new page to tail
+    page_table_set_entry(pt, page, nframes-1, PROT_READ);       // map page to last frame
+    disk_read(disk, page, &physmem([nframes-1) * BLOCK_SIZE]);  // write page from disk to physical memory
+    page_table_set_entry(pt, removedPage, 0, 0);                // dereference the page we removed from physical memory
+   
+    
 }
 
 /*
