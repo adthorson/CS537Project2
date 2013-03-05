@@ -69,7 +69,11 @@ struct page_table * page_table_create( int npages, int nframes, page_fault_handl
 	pt->fd = open(filename,O_CREAT|O_TRUNC|O_RDWR,0777);
 	if(!pt->fd) return 0;
 
-	ftruncate(pt->fd,PAGE_SIZE*npages);
+	if (npages > nframes) 
+	  ftruncate(pt->fd,PAGE_SIZE*npages);
+	else
+	  ftruncate(pt->fd,PAGE_SIZE*nframes);
+
 
 	unlink(filename);
 
