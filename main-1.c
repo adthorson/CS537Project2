@@ -36,6 +36,8 @@ how to use the page table and disk interfaces.
 #include <string.h>
 #include <errno.h>
 
+struct disk *disk;
+
 struct frame {
     struct frame * next;
     struct frame * prev;
@@ -43,10 +45,16 @@ struct frame {
     int flags;
 };
 
+struct frame * PFDB;
+
 void randPRA( struct page_table *pt, int page);
 void fifoPRA( struct page_table *pt, int page);
 void SfifoPRA( struct page_table *pt, int page);
 void customPRA( struct page_table *pt, int page);
+void addFrameEntry( struct page_table *pt, int page);
+void removeFrameEntry( struct page_table *pt, int page);
+char *returnFreeSpace( struct page_table *pt, int page);
+
 
 /*
 void page_fault_handler( struct page_table *pt, int page)
@@ -88,7 +96,6 @@ void page_fault_handler( struct page_table *pt, int page)
 }
 */
 
-struct disk *disk = disk_open("myvirtualdisk",npages);
 int main( int argc, char *argv[] )
 {
 	if(argc!=5) {
@@ -101,6 +108,9 @@ int main( int argc, char *argv[] )
 	const char *PRA = argv[3];	//PRA = Page Replacement Algorithm
 	const char *program = argv[4];
 
+	disk = disk_open("myvirtualdisk",npages);
+	PFDB = malloc(sizeof(struct frame)*nframes)
+	
 	if(!disk) {
 		fprintf(stderr,"couldn't create virtual disk: %s\n",strerror(errno));
 		return 1;
