@@ -37,8 +37,6 @@ how to use the page table and disk interfaces.
 #include <errno.h>
 
 struct frame {
-    struct frame * next;
-    struct frame * prev;
     int VPN;
     int flags;
 };
