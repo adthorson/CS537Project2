@@ -43,6 +43,8 @@ struct frame {
 
 struct frame * PFDB;
 struct disk *disk;
+int nframes;
+char *physmem;
 
 void randPRA( struct page_table *pt, int page);
 void fifoPRA( struct page_table *pt, int page);
@@ -88,6 +90,7 @@ char *returnFreeSpace( struct page_table *pt, int page);
 int main( int argc, char *argv[] )
 {
     int i;
+    struct page_table *pt;
     
     if(argc!=5) {
         printf("use: virtmem <npages> <nframes> <rand|fifo|custom> <sort|scan|focus>\n");
@@ -95,8 +98,8 @@ int main( int argc, char *argv[] )
     }
     
     int npages = atoi(argv[1]);
-    int nframes = atoi(argv[2]);
-    const char *PRA = argv[3]; //PRA = Page Replacement Algorithm
+    nframes = atoi(argv[2]);
+    const char *PRA = argv[3];	//PRA = Page Replacement Algorithm
     const char *program = argv[4];
     
     disk = disk_open("myvirtualdisk",npages);
@@ -113,16 +116,16 @@ int main( int argc, char *argv[] )
     }
     
     if(!strcmp(PRA,"rand")) {
-        struct page_table *pt = page_table_create( npages, nframes, randPRA );
+        pt = page_table_create( npages, nframes, randPRA );
         
     } else if(!strcmp(PRA, "fifo")) {
-        struct page_table *pt = page_table_create( npages, nframes, fifoPRA );
+        pt = page_table_create( npages, nframes, fifoPRA );
         
     } else if(!strcmp(PRA, "2fifo")) {
-        struct page_table *pt = page_table_create( npages, nframes, SfifoPRA );
+        pt = page_table_create( npages, nframes, SfifoPRA );
         
     } else if(!strcmp(PRA, "custom")) {
-        struct page_table *pt = page_table_create( npages, nframes, customPRA );
+        pt = page_table_create( npages, nframes, customPRA );
         
     } else {
         printf("use: virtmem <npages> <nframes> <rand|fifo|custom> <sort|scan|focus>\n");
@@ -137,8 +140,7 @@ int main( int argc, char *argv[] )
     
     
     char *virtmem = page_table_get_virtmem(pt);
-    
-    char *physmem = page_table_get_physmem(pt);
+    physmem = page_table_get_physmem(pt);
     
     
     if(!strcmp(program,"sort")) {
@@ -170,51 +172,6 @@ int main( int argc, char *argv[] )
  */
 void randPRA( struct page_table *pt, int page) {
     
- int i, j, replacement=1;
-    int *frame;
-    int *bits;
-    
-    page_table_get_entry(pt, page, &frame, &bits);
-    
-	// If page fault occurred because a write was attempted to a read-only page, add PROT_WRITE bit
-    if (bits == PROT_READ) {
-        page_table_set_entry(pt, page, frame, PROT_READ|PROT_WRITE);
-    }
-	
-	
-	for (i=0; i < nframes; i++) {
-        if (PFDB[i].VPN == -1) {
-            PFDB[i].VPN = page;
-            replacement = 0;
-            break;
-        }
-    }
-	
-	if (replacement == 0) {
-        page_table_set_entry(pt, page, i, PROT_READ);
-        disk_read(disk, page, &physmem[i * BLOCK_SIZE]);
-    }
-	
-	if (replacement == 1) {
-		unsigned short seedv[3]// = {1,1,1};
-		seed48(seedv);
-		int randFrame = lrand48();
-        int removedPage = PFDB[randFrame].VPN;
-		
-		//NEED TO CHECK IF WRITE BIT IS SET
-		page_table_get_entry(pt, removedPage, frame, bits);
-        if (bits == PROT_READ|PROT_WRITE) {
-            disk_write(disk, removedPage, &physmem[frame * PAGE_SIZE]);
-        }
-        PFDB[randFrame].VPN = -1;
-    }    
-   
-    PFDB[nframes-1].VPN = page;                                 // set new page to tail
-    page_table_set_entry(pt, page, nframes-1, PROT_READ);       // map page to last frame
-    disk_read(disk, page, &physmem([nframes-1) * BLOCK_SIZE]);  // write page from disk to physical memory
-    page_table_set_entry(pt, removedPage, 0, 0);                // dereference the page we removed from physical memory
-   
-    
 }
 
 /*
@@ -245,11 +202,12 @@ void fifoPRA( struct page_table *pt, int page) {
     int *frame;
     int *bits;
     
-    page_table_get_entry(pt, page, &frame, &bits);
+    page_table_get_entry(pt, page, frame, bits);
     
     // If page fault occurred because a write was attempted to a read-only page, add PROT_WRITE bit
     if (bits == PROT_READ) {
         page_table_set_entry(pt, page, frame, PROT_READ|PROT_WRITE);
+        //PFDB[frame].flags = 1;
     }
     
     // Check to see if there is an empty frame and set replacement flag
@@ -273,8 +231,8 @@ void fifoPRA( struct page_table *pt, int page) {
         int removedPage = PFDB[0].VPN;
         
         page_table_get_entry(pt, removedPage, frame, bits);
-        if (bits == PROT_READ|PROT_WRITE) {
-            disk_write(disk, removedPage, &physmem[frame * PAGE_SIZE]);
+        if (&bits == PROT_READ|PROT_WRITE) {
+            disk_write(disk, removedPage, &physmem[*frame * PAGE_SIZE]);
         }
         
         PFDB[0].VPN = -1;
@@ -288,30 +246,28 @@ void fifoPRA( struct page_table *pt, int page) {
         page_table_set_entry(pt, page, nframes-1, PROT_READ);       // map page to last frame
         disk_read(disk, page, &physmem([nframes-1) * BLOCK_SIZE]);  // write page from disk to physical memory
         page_table_set_entry(pt, removedPage, 0, 0);                // dereference the page we removed from physical memory
-    }    
-    
+                  
+    }
 }
-
-/*
- * Second-Chance First In First Out page replacement algorithm
- *
- * Double List Queues
- * @param
- */
-void SfifoPRA( struct page_table *pt, int page) {
-    
-}
-
-/*
- * Custom page replacement algorithm
- *
- *
- * @param
- */
-void customPRA( struct page_table *pt, int page) {
-    
-}
-
-
-
-
+                  
+        /*
+         * Second-Chance First In First Out page replacement algorithm
+         *
+         * Double List Queues
+         * @param
+         */
+                  void SfifoPRA( struct page_table *pt, int page) {
+                      
+                  }
+                  
+        /*
+         * Custom page replacement algorithm
+         *
+         *
+         * @param
+         */
+                  void customPRA( struct page_table *pt, int page) {
+                      
+                  }
+                  
+                  
