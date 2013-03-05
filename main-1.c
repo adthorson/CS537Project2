@@ -179,7 +179,21 @@ void randPRA( struct page_table *pt, int page) {
  * @param
  */
 void fifoPRA( struct page_table *pt, int page) {
-    
+     //We come in realizing that "page" in "page_table" has been faulted
+	//1. search in PFDB for free frame
+	//	1.1. if PFDB full
+	//		1.1.1 <removeFrameEntry>		remove entry from PFDB at head of list
+	//		1.1.2 <returnFreeSpace>			return addr to free frame
+	//		1.1.3 <disk_read>				read "page" from "disk"
+	//		1.1.4 <addFrameEntry>			add this page into the free frame to tail of list
+	//		1.1.5 <page_table_set_entry>	append "page" to "page_table"
+	//		1.1.6 ?restart process?
+	//	1.2	 if PFDB has free frame.
+	//		1.2.1 <*returnFreeSpace> 		return addr to free frame
+	//		1.2.2 <disk_read>				read "page" from "disk"
+	//		1.2.3 <addFrameEntry>			add this page into the free frame to tail of list
+	//		1.2.4 <page_table_set_entry>	append "page" to "page_table"
+	//		1.1.6 ?restart process?
     int i, j, replacement=1;
     
     for (i=0; i < nframes; i++) {
