@@ -96,7 +96,7 @@ int main( int argc, char *argv[] )
     
     int npages = atoi(argv[1]);
     int nframes = atoi(argv[2]);
-    const char *PRA = argv[3];	//PRA = Page Replacement Algorithm
+    const char *PRA = argv[3]; //PRA = Page Replacement Algorithm
     const char *program = argv[4];
     
     disk = disk_open("myvirtualdisk",npages);
@@ -197,6 +197,15 @@ void fifoPRA( struct page_table *pt, int page) {
     // 1.1.6 ?restart process?
     
     int i, j, replacement=1;
+    int *frame;
+    int *bits;
+    
+    page_table_get_entry(pt, page, &frame, &bits);
+    
+    // If page fault occurred because a write was attempted to a read-only page, add PROT_WRITE bit
+    if (bits == PROT_READ) {
+        page_table_set_entry(pt, page, frame, PROT_READ|PROT_WRITE);
+    }
     
     // Check to see if there is an empty frame and set replacement flag
     for (i=0; i < nframes; i++) {
@@ -213,9 +222,27 @@ void fifoPRA( struct page_table *pt, int page) {
         disk_read(disk, page, &physmem[i * BLOCK_SIZE]);
     }
     
+    // DO FIFO
     if (replacement == 1) {
-        // DO FIFO
+        // Remove head -- NEED TO CHECK IF WRITE BIT IS SET
+        int removedPage = PFDB[0].VPN;
         
+        page_table_get_entry(pt, removedPage, frame, bits);
+        if (bits == PROT_READ|PROT_WRITE) {
+            disk_write(disk, removedPage, &physmem[frame * PAGE_SIZE]);
+        }
+        
+        PFDB[0].VPN = -1;
+        
+        // Shift elements towards head
+        for (j=0; j < nframes-1; j++) {
+            PFDB[j].VPN = PFDB[j+1].VPN;
+        }
+        
+        PFDB[nframes-1].VPN = page;                                 // set new page to tail
+        page_table_set_entry(pt, page, nframes-1, PROT_READ);       // map page to last frame
+        disk_read(disk, page, &physmem([nframes-1) * BLOCK_SIZE]);  // write page from disk to physical memory
+        page_table_set_entry(pt, removedPage, 0, 0);                // dereference the page we removed from physical memory
     }    
     
 }
