@@ -36,8 +36,6 @@ how to use the page table and disk interfaces.
 #include <string.h>
 #include <errno.h>
 
-struct disk *disk;
-
 struct frame {
     struct frame * next;
     struct frame * prev;
@@ -46,6 +44,7 @@ struct frame {
 };
 
 struct frame * PFDB;
+struct disk *disk;
 
 void randPRA( struct page_table *pt, int page);
 void fifoPRA( struct page_table *pt, int page);
@@ -109,7 +108,7 @@ int main( int argc, char *argv[] )
 	const char *program = argv[4];
 
 	disk = disk_open("myvirtualdisk",npages);
-	PFDB = malloc(sizeof(struct frame)*nframes)
+	PFDB = malloc(sizeof(struct frame)*nframes);
 	
 	if(!disk) {
 		fprintf(stderr,"couldn't create virtual disk: %s\n",strerror(errno));
