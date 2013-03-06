@@ -356,7 +356,6 @@ void SfifoPRA( struct page_table *pt, int page) {
         //PFDB[frame].flags = 1;
         if (PFDB[frame].flags == 0) {
             //printf("REVIVE FRAME: %d\n",frame);
-            //printf("REVIVE\n");
             int phoenix = PFDB[frame].VPN;
             for (j=frame; j < nframes-1; j++) {
                 PFDB[j] = PFDB[j+1];
