@@ -55,7 +55,7 @@ double randomDouble;
 
 void randPRA( struct page_table *pt, int page);
 void fifoPRA( struct page_table *pt, int page);
-//void SfifoPRA( struct page_table *pt, int page);
+void SfifoPRA( struct page_table *pt, int page);
 void customPRA( struct page_table *pt, int page);
 void addFrameEntry( struct page_table *pt, int page);
 void removeFrameEntry( struct page_table *pt, int page);
@@ -129,7 +129,7 @@ int main( int argc, char *argv[] )
         pt = page_table_create( npages, nframes, fifoPRA );
         
     } else if(!strcmp(PRA, "2fifo")) {
-        //pt = page_table_create( npages, nframes, SfifoPRA );
+        pt = page_table_create( npages, nframes, SfifoPRA );
         
     } else if(!strcmp(PRA, "custom")) {
         pt = page_table_create( npages, nframes, customPRA );
@@ -333,27 +333,25 @@ void fifoPRA( struct page_table *pt, int page) {
  * Double List Queues
  * @param
  */
-/*void SfifoPRA( struct page_table *pt, int page) {
+void SfifoPRA( struct page_table *pt, int page) {
      //Queue 1 = 75% (rounded down) of PFDB
  //Queue 2 = 25% of PFDB
 	
 	int i, j, replacement=1	;
-    int *frame;
-	frame = malloc(sizeof(int*));
+    int frame;
     int *bits;
-	bits = malloc(sizeof(int*));
+	bits = malloc(sizeof(int));
 	int tailOfFirstQueue = nframes/4;
 	int headOfSecondQueue = nframes/4;
 	physmem = page_table_get_physmem(pt);
     
-    page_table_get_entry(pt, page, frame, bits);
+    page_table_get_entry(pt, page, &frame, bits);
 	
 	// If page fault occurred because a write was attempted to a read-only page, add PROT_WRITE bit
     if (*bits == PROT_READ) {
-        page_table_set_entry(pt, page, *frame, PROT_READ|PROT_WRITE);
+        page_table_set_entry(pt, page, frame, PROT_READ|PROT_WRITE);
         //PFDB[frame].flags = 1;
-		free(frame);
-		free(bits);
+
 		return;
     }
 	
@@ -365,8 +363,7 @@ void fifoPRA( struct page_table *pt, int page) {
 			page_table_set_entry(pt, page, i, PROT_READ);
 			disk_read(disk, page, &physmem[i * PAGE_SIZE]);
             replacement = 0;
-			free(frame);
-			free(bits);
+
             break;
         }
     }
@@ -384,8 +381,7 @@ void fifoPRA( struct page_table *pt, int page) {
 				page_table_set_entry(pt, removedFirstPage, i, PROT_READ);
 				disk_read(disk, removedFirstPage, &physmem[i * BLOCK_SIZE]);
 				replacement = 0;
-				free(frame);
-				free(bits);
+
 				break;
 			}
 		}
@@ -394,9 +390,9 @@ void fifoPRA( struct page_table *pt, int page) {
 		if (replacement == 1) {
 			int removedSecondPage = PFDB[headOfSecondQueue].VPN; 
 			
-			page_table_get_entry(pt, removedSecondPage, frame, bits);
+			page_table_get_entry(pt, removedSecondPage, &frame, bits);
 			if (*bits == (PROT_READ|PROT_WRITE)) {
-				disk_write(disk, removedSecondPage, &physmem[*frame * PAGE_SIZE]);
+				disk_write(disk, removedSecondPage, &physmem[frame * PAGE_SIZE]);
 			}
 			
 			
@@ -423,7 +419,6 @@ void fifoPRA( struct page_table *pt, int page) {
 		
     }
 	
-	free(frame);
     free(bits);
  
  
