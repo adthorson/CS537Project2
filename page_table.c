@@ -126,6 +126,23 @@ void page_table_set_entry( struct page_table *pt, int page, int frame, int bits 
 
 	remap_file_pages(pt->virtmem+page*PAGE_SIZE,PAGE_SIZE,0,frame,0);
 	mprotect(pt->virtmem+page*PAGE_SIZE,PAGE_SIZE,bits);
+
+	// Check to make sure too many frames aren't mapped
+	int numMapped = 0;
+	int i;
+	for(i = 0; i < pt->npages; i++)
+	{
+		if(pt->page_bits[i] != 0)
+			numMapped++;
+	}
+
+	// If there are, alert user and stop execution
+	if(numMapped > pt->nframes)
+	{
+		fprintf(stderr,"page_table_set_entry: cannot have more than %d frames mapped at a time!\n",pt->nframes);
+		abort();
+
+	}
 }
 
 void page_table_get_entry( struct page_table *pt, int page, int *frame, int *bits )
