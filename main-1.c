@@ -14,8 +14,8 @@
 // CS Login: twilliam
 // Lecturer's Name: Michael Swift
 //
-// Pair Partner: Adam Thorson adthorson@wisc.edu
-// CS Login: thorson
+// Pair Partner: Adam Thorson @wisc.edu
+// CS Login:
 // Lecturer's Name: Michael Swift
 //
 //////////////////////////// 80 columns wide //////////////////////////////////
@@ -241,7 +241,7 @@ void fifoPRA( struct page_table *pt, int page) {
     
     // If page fault occurred because a write was attempted to a read-only page, add PROT_WRITE bit
     if (*bits == PROT_READ) {
-        printf(" READ_BIT");
+        printf(" READ_BIT\n");
         page_table_set_entry(pt, page, *frame, PROT_READ|PROT_WRITE);
         //PFDB[frame].flags = 1;
         return;
@@ -249,23 +249,21 @@ void fifoPRA( struct page_table *pt, int page) {
     
     // Check to see if there is an empty frame and set replacement flag
     for (i=0; i < nframes; i++) {
-        printf(" EMPTY");
         if (PFDB[i].VPN == -1) {
+            printf(" EMPTY i: %d ",i);
             PFDB[i].VPN = page;
+            page_table_set_entry(pt, page, i, PROT_READ);
+            //page_table_print(pt);
+            disk_read(disk, page, &physmem[i * PAGE_SIZE]);
             replacement = 0;
             break;
         }
     }
     
-    // If there is an empty frame, use it
-    if (replacement == 0) {
-        page_table_set_entry(pt, page, i, PROT_READ);
-        printf("THREE");
-        disk_read(disk, page, &physmem[i * BLOCK_SIZE]);
-    }
-    
     // DO FIFO
     if (replacement == 1) {
+        
+        printf("DOFIFO ");
 
         // Remove head -- NEED TO CHECK IF WRITE BIT IS SET
         int removedPage = PFDB[0].VPN;
