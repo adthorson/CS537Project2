@@ -44,7 +44,6 @@ struct frame {
 struct frame * PFDB;
 struct disk *disk;
 int nframes;
-char *physmem;
 
 void randPRA( struct page_table *pt, int page);
 void fifoPRA( struct page_table *pt, int page);
@@ -140,7 +139,7 @@ int main( int argc, char *argv[] )
     
     
     char *virtmem = page_table_get_virtmem(pt);
-    physmem = page_table_get_physmem(pt);
+    //physmem = page_table_get_physmem(pt);
     
     
     if(!strcmp(program,"sort")) {
@@ -174,6 +173,7 @@ void randPRA( struct page_table *pt, int page) {
     int i, replacement=1;
     int *frame;
     int *bits;
+	char *physmem =	page_table_get_physmem(pt);
     
     page_table_get_entry(pt, page, frame, bits);
     
@@ -197,7 +197,7 @@ void randPRA( struct page_table *pt, int page) {
     }
 	
 	if (replacement == 1) {
-		unsigned short seedv[3]// = {1,1,1};
+		unsigned short seedv[3];// = {1,1,1};
 		long seed48(seedv);
 		int randFrame = lrand48();
         int removedPage = PFDB[randFrame].VPN;
@@ -244,6 +244,7 @@ void fifoPRA( struct page_table *pt, int page) {
     int i, j, replacement=1	;
     int *frame;
     int *bits;
+	char *physmem =	page_table_get_physmem(pt);
     
     page_table_get_entry(pt, page, frame, bits);
     
@@ -300,7 +301,59 @@ void fifoPRA( struct page_table *pt, int page) {
  * @param
  */
 void SfifoPRA( struct page_table *pt, int page) {
+
+    //Queue 1 = 75% (rounded down) of PFDB
+	//Queue 2 = 25% of PFDB
+	
+	int i, j, replacement=1	;
+    int *frame;
+    int *bits;
+	char *physmem =	page_table_get_physmem(pt);
     
+    page_table_get_entry(pt, page, frame, bits);
+	
+	// If page fault occurred because a write was attempted to a read-only page, add PROT_WRITE bit
+    if (*bits == PROT_READ) {
+        page_table_set_entry(pt, page, *frame, PROT_READ|PROT_WRITE);
+        //PFDB[frame].flags = 1;
+    }
+	
+	// Check to see if there is an empty frame within the first queue and set replacement flag
+    for (i=0; i < (nframes/4); i++) {
+        if (PFDB[i].VPN == -1) {
+            PFDB[i].VPN = page;
+            replacement = 0;
+            break;
+        }
+    }
+	
+	// If there is an empty frame within the first queue, use it
+    if (replacement == 0) {
+        page_table_set_entry(pt, page, i, PROT_READ);
+        disk_read(disk, page, &physmem[i * BLOCK_SIZE]);
+    }
+	
+	// If the first queue is empty, we begin to check if the second is empty
+	if (replacement == 1) {
+		int removedFirstPage = PFDB[0].VPN;// head from the first queue -> used to put in tail of second queue
+		
+		// Check to see if there is an empty frame within the second queue and set replacement flag
+		for (i= ((nframes/4) +1); i < nframes; i++) {
+			if (PFDB[i].VPN == -1) {
+				PFDB[i].VPN = page;
+				replacement = 0;
+				break;
+			}
+		}
+		
+		if (replacement == 1) {
+			int removedSecondPage = PFDB[0].VPN;
+		
+		
+		}
+    }
+	
+	
 }
 
 /*
