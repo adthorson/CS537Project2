@@ -14,8 +14,8 @@
 // CS Login: twilliam
 // Lecturer's Name: Michael Swift
 //
-// Pair Partner: Adam Thorson @wisc.edu
-// CS Login:
+// Pair Partner: Adam Thorson adthorson@wisc.edu
+// CS Login: thorson
 // Lecturer's Name: Michael Swift
 //
 //////////////////////////// 80 columns wide //////////////////////////////////
@@ -45,6 +45,7 @@ struct frame * PFDB;
 struct disk *disk;
 int nframes;
 char *virtmem;
+char *physmem;
 
 //void randPRA( struct page_table *pt, int page);
 void fifoPRA( struct page_table *pt, int page);
@@ -141,7 +142,7 @@ int main( int argc, char *argv[] )
      virtmem = page_table_get_virtmem(pt);
     //virtmem = malloc(sizeof(struct page_table));
     //virtmem = page_table_get_virtmem(pt);
-    //physmem = page_table_get_physmem(pt);
+    physmem = page_table_get_physmem(pt);
     
     
     if(!strcmp(program,"sort")) {
@@ -175,7 +176,7 @@ int main( int argc, char *argv[] )
     int i, replacement=1;
     int *frame;
     int *bits;
-    char *physmem =	page_table_get_physmem(pt);
+    char *physmem = page_table_get_physmem(pt);
     
     page_table_get_entry(pt, page, frame, bits);
     
@@ -229,42 +230,27 @@ void fifoPRA( struct page_table *pt, int page) {
     
     printf(" PAGE: %d",page);
     
-    //We come in realizing that "page" in "page_table" has been faulted
-    //1. search in PFDB for free frame
-    // 1.1. if PFDB full
-    // 1.1.1 <removeFrameEntry> remove entry from PFDB at head of list
-    // 1.1.2 <returnFreeSpace> return addr to free frame
-    // 1.1.3 <disk_read> read "page" from "disk"
-    // 1.1.4 <addFrameEntry> add this page into the free frame to tail of list
-    // 1.1.5 <page_table_set_entry> append "page" to "page_table"
-    // 1.1.6 ?restart process?
-    // 1.2 if PFDB has free frame.
-    // 1.2.1 <*returnFreeSpace> return addr to free frame
-    // 1.2.2 <disk_read> read "page" from "disk"
-    // 1.2.3 <addFrameEntry> add this page into the free frame to tail of list
-    // 1.2.4 <page_table_set_entry> append "page" to "page_table"
-    // 1.1.6 ?restart process?
-    
     int i, j, replacement=1;
     int *frame;
-    frame = malloc(sizeof(int));
+    frame = malloc(sizeof(int*));
     int *bits;
-    bits = malloc(sizeof(int));
-    char *physmem =	page_table_get_physmem(pt);
+    bits = malloc(sizeof(int*));
+    
     
     page_table_get_entry(pt, page, frame, bits);
     
     // If page fault occurred because a write was attempted to a read-only page, add PROT_WRITE bit
     if (*bits == PROT_READ) {
+        printf(" READ_BIT");
         page_table_set_entry(pt, page, *frame, PROT_READ|PROT_WRITE);
         //PFDB[frame].flags = 1;
+        return;
     }
     
     // Check to see if there is an empty frame and set replacement flag
     for (i=0; i < nframes; i++) {
-        printf(" ONE");
+        printf(" EMPTY");
         if (PFDB[i].VPN == -1) {
-            printf("if@R#QR#$#@R#@FESFDSFEW#$RF#$BITCH");
             PFDB[i].VPN = page;
             replacement = 0;
             break;
@@ -280,7 +266,7 @@ void fifoPRA( struct page_table *pt, int page) {
     
     // DO FIFO
     if (replacement == 1) {
-        printf(" CUNTLIPS");
+
         // Remove head -- NEED TO CHECK IF WRITE BIT IS SET
         int removedPage = PFDB[0].VPN;
         
@@ -303,8 +289,8 @@ void fifoPRA( struct page_table *pt, int page) {
         
     }
     
-    free (frame);
-    free (bits);
+    free(frame);
+    free(bits);
 }
 
 /*
