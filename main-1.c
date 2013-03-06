@@ -228,7 +228,7 @@ int main( int argc, char *argv[] )
  */
 void fifoPRA( struct page_table *pt, int page) {
     
-    printf(" PAGE: %d",page);
+    //printf(" PAGE: %d",page);
     
     int i, j, replacement=1;
     int *frame;
@@ -241,7 +241,7 @@ void fifoPRA( struct page_table *pt, int page) {
     
     // If page fault occurred because a write was attempted to a read-only page, add PROT_WRITE bit
     if (*bits == PROT_READ) {
-        printf(" READ_BIT\n");
+        //printf(" READ_BIT\n");
         page_table_set_entry(pt, page, *frame, PROT_READ|PROT_WRITE);
         //PFDB[frame].flags = 1;
         return;
@@ -250,7 +250,7 @@ void fifoPRA( struct page_table *pt, int page) {
     // Check to see if there is an empty frame and set replacement flag
     for (i=0; i < nframes; i++) {
         if (PFDB[i].VPN == -1) {
-            printf(" EMPTY i: %d ",i);
+            //printf(" EMPTY i: %d ",i);
             PFDB[i].VPN = page;
             page_table_set_entry(pt, page, i, PROT_READ);
             //page_table_print(pt);
@@ -263,7 +263,7 @@ void fifoPRA( struct page_table *pt, int page) {
     // DO FIFO
     if (replacement == 1) {
         
-        printf("DOFIFO ");
+        //printf("DOFIFO ");
 
         // Remove head -- NEED TO CHECK IF WRITE BIT IS SET
         int removedPage = PFDB[0].VPN;
@@ -281,9 +281,10 @@ void fifoPRA( struct page_table *pt, int page) {
         }
         
         PFDB[nframes-1].VPN = page; // set new page to tail
-        page_table_set_entry(pt, page, nframes-1, PROT_READ); // map page to last frame
         disk_read(disk, page, &physmem[(nframes-1) * BLOCK_SIZE]); // write page from disk to physical memory
         page_table_set_entry(pt, removedPage, 0, 0); // dereference the page we removed from physical memory
+        page_table_set_entry(pt, page, nframes-1, PROT_READ); // map page to last frame
+        
         
     }
     
