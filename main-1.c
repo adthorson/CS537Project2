@@ -243,7 +243,7 @@ void randPRA( struct page_table *pt, int page) {
         page_table_set_entry(pt, removedPage, 0, 0); // dereference the page we removed from physical memory
         page_table_set_entry(pt, page, nframes-1, PROT_READ); // map page to last frame
     }
-    printf("Page faults: %d\tDisk Reads: %d\tDisk Writes: %d\n", pageFault, diskRead, diskWrite);
+    //printf("Page faults: %d\tDisk Reads: %d\tDisk Writes: %d\n", pageFault, diskRead, diskWrite);
     
     free(frame);
     free(bits);
@@ -321,7 +321,7 @@ void fifoPRA( struct page_table *pt, int page) {
         
         
     }
-    printf("Page faults: %d\tDisk Reads: %d\tDisk Writes: %d\n", pageFault, diskRead, diskWrite);
+    //printf("Page faults: %d\tDisk Reads: %d\tDisk Writes: %d\n", pageFault, diskRead, diskWrite);
     
     free(frame);
     free(bits);
@@ -337,21 +337,26 @@ void SfifoPRA( struct page_table *pt, int page) {
     //Queue 1 = 75% (rounded down) of PFDB
     //Queue 2 = 25% of PFDB
     
+    //printf("PAGE: %d\n",page);
+    
     int i, j, k, replacement=1, secondFull=1;
     int frame;
     int *bits;
     bits = malloc(sizeof(int));
-    int tailOfFirstQueue = 3 * nframes/4;
-    int headOfSecondQueue = 3 * nframes/4;
+    int tailOfFirstQueue = nframes - (nframes/4);
+    int headOfSecondQueue = nframes - (nframes/4);
     physmem = page_table_get_physmem(pt);
     
     page_table_get_entry(pt, page, &frame, bits);
     
     // If page fault occurred because a write was attempted to a read-only page, add PROT_WRITE bit
     if (*bits == PROT_READ) {
+        //printf("WRITE_BIT SET \n");
         page_table_set_entry(pt, page, frame, PROT_READ|PROT_WRITE);
         //PFDB[frame].flags = 1;
         if (PFDB[frame].flags == 0) {
+            //printf("REVIVE FRAME: %d\n",frame);
+            //printf("REVIVE\n");
             int phoenix = PFDB[frame].VPN;
             for (j=frame; j < nframes-1; j++) {
                 PFDB[j] = PFDB[j+1];
@@ -382,6 +387,7 @@ void SfifoPRA( struct page_table *pt, int page) {
     // Check to see if there is an empty frame within the first queue and set replacement flag
     // if there is, append the PTE to the empty frame
     for (i=0; i < tailOfFirstQueue; i++) {
+        //printf("CHECKING FOR EMPTY FRAME IN FIRST \n");
         if (PFDB[i].VPN == -1) {
             PFDB[i].VPN = page;
             PFDB[i].flags = 1;
@@ -398,6 +404,7 @@ void SfifoPRA( struct page_table *pt, int page) {
     // If the first queue is Full, we begin to check if the second is empty
     if (replacement == 1) {
         int removedFirstPage = PFDB[0].VPN;       // head from the first queue -> used to put in tail of second queue
+        //printf("FIRST QUEUE FULL \n");
         
         // Check to see if there is an empty frame within the second queue and set replacement flag
         // if there is, append the PTE to the empty frame
@@ -405,9 +412,6 @@ void SfifoPRA( struct page_table *pt, int page) {
             if (PFDB[i].VPN == -1) {
                 PFDB[i].VPN = removedFirstPage;
                 PFDB[i].flags = 0;
-                page_table_set_entry(pt, removedFirstPage, i, PROT_READ);
-                disk_read(disk, removedFirstPage, &physmem[i * BLOCK_SIZE]);
-                diskRead++;
                 replacement = 0;
                 
                 break;
@@ -416,6 +420,7 @@ void SfifoPRA( struct page_table *pt, int page) {
         
         // If the second queue is full, we must now exchange from disk
         if (replacement == 1) {
+            //printf("SECOND FULL\n");
             int removedSecondPage = PFDB[headOfSecondQueue].VPN;
             
             page_table_get_entry(pt, removedSecondPage, &frame, bits);
@@ -440,15 +445,16 @@ void SfifoPRA( struct page_table *pt, int page) {
         }
         
         // Shift elements towards head
+        
         for (j=0; j < tailOfFirstQueue-1; j++) {
             PFDB[j].VPN = PFDB[j+1].VPN;
         }
         
         PFDB[tailOfFirstQueue-1].VPN = page; // set new page to tail of first queue
         PFDB[tailOfFirstQueue-1].flags = 1;
-        disk_read(disk, page, &physmem[(nframes-1) * BLOCK_SIZE]); // write page from disk to physical memory
+        disk_read(disk, page, &physmem[(tailOfFirstQueue-1) * BLOCK_SIZE]); // write page from disk to physical memory
         diskRead++;
-        page_table_set_entry(pt, page, nframes-1, PROT_READ); // map page to last frame
+        page_table_set_entry(pt, page, tailOfFirstQueue-1, PROT_READ); // map page to last frame
         
     }
     
