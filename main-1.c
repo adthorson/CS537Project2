@@ -335,7 +335,7 @@ void SfifoPRA( struct page_table *pt, int page) {
     //Queue 1 = 75% (rounded down) of PFDB
     //Queue 2 = 25% of PFDB
     
-    //printf("INCOMING PAGE: %d\n",page);
+    printf("\nINCOMING PAGE: %d\n",page);
     
     pageFault++;
     
@@ -352,7 +352,8 @@ void SfifoPRA( struct page_table *pt, int page) {
     
     // If page fault occurred because a write was attempted to a read-only page, add PROT_WRITE bit
     if (*bits == PROT_READ) {
-        //printf("WRITE_BIT SET \n");
+        printf("Incoming page has READONLY_BIT set -> change to R|W then exit \n");
+		int firstFreeLocation;
         page_table_set_entry(pt, page, frame, PROT_READ|PROT_WRITE);
         if (PFDB[frame].flags == 0) {
             //printf("REVIVE FRAME: %d\n",frame);
@@ -361,10 +362,17 @@ void SfifoPRA( struct page_table *pt, int page) {
             for (j = frame; j > tailOfSecondQueue; j--) {
                 PFDB[j].VPN = PFDB[j-1].VPN;
             }
-            PFDB[tailOfSecondQueue].VPN = -1;
+			PFDB[tailOfSecondQueue].VPN = -1;
+			for (j = headOfSecondQueue; j >= tailOfSecondQueue; j--) {
+				if(PFDB[j].VPN == -1){
+					firstFreeLocation = j;
+					replacement = 0;
+					break;
+				}
+			}
             int removedFirstPage = PFDB[headOfFirstQueue].VPN;
-            PFDB[tailOfSecondQueue].VPN = removedFirstPage;
-            // DO WE HAVE TO SET THIS IN THE PAGE TABLE?
+            PFDB[firstFreeLocation].VPN = removedFirstPage;
+            // DO WE HAVE TO SET THIS IN THE PAGE TABLE?t
             //page_table_set_entry(pt, removedFirstPage, tailOfSecondQueue, PROT_READ);
             
             // Shift first queue elements towards head to make place for phoenix at tail
@@ -404,8 +412,10 @@ void SfifoPRA( struct page_table *pt, int page) {
             PFDB[i].flags = 1;
             //printf("flag is now: %d\n", PFDB[i].flags);
             disk_read(disk, page, &physmem[i * PAGE_SIZE]);
+			printf(" -> read from disk onto frame %d\n", i);
             diskRead++;
             page_table_set_entry(pt, page, i, PROT_READ);
+			printf("page %d is now mapped to frame %d\n", page, i);
             replacement = 0;
             
             break;
@@ -416,7 +426,7 @@ void SfifoPRA( struct page_table *pt, int page) {
     // If the first queue is full, push head of 1st queue to tail of 2nd queue
     if (replacement == 1) {
         int removedFirstPage = PFDB[headOfFirstQueue].VPN;       // head from the first queue -> used to put in tail of second queue
-        //printf("FIRST QUEUE FULL \n");
+        printf("FIRST QUEUE FULL \n");
         
 
         int firstFreeLocation;
@@ -432,19 +442,21 @@ void SfifoPRA( struct page_table *pt, int page) {
 			PFDB[firstFreeLocation].VPN = removedFirstPage;
 			PFDB[firstFreeLocation].flags = 0;
 			replacement = 0;
+			printf("There is a free spot in queue2, So we write into second queue \n");
         }
         
         // If the second queue is full
         if (replacement == 1) {
-            //printf("SECOND QUEUE FULL\n");
+            printf("SECOND QUEUE FULL\n");
             int removedSecondPage = PFDB[headOfSecondQueue].VPN;
             
             // Write back to disk if the evicted frame has write bit set
             // Maybe the problem is here?
             page_table_get_entry(pt, removedSecondPage, &frame, bits);
             if (*bits == (PROT_READ|PROT_WRITE)) {
-                //printf("HELLO");
+				printf("page %d has bits R|W we write back to disk \n", removedSecondPage);
                 disk_write(disk, removedSecondPage, &physmem[frame * PAGE_SIZE]);
+				printf("-> page %d from frame %d is written to disk\n", page, frame);
                 diskWrite++;
             }
             
@@ -472,8 +484,10 @@ void SfifoPRA( struct page_table *pt, int page) {
         PFDB[0].flags = 1;
         //printf("flag is now: %d\n", PFDB[headOfFirstQueue-1].flags);
         disk_read(disk, page, &physmem[0]); // read page from disk to physical memory
+		printf(" -> read from disk onto frame 0\n");
         diskRead++;
         page_table_set_entry(pt, page, 0, PROT_READ); // map page to tail of first queue
+		printf("page %d is now mapped to frame %d\n", page, i);
         
     }
     //printf("Page faults: %d\tDisk Reads: %d\tDisk Writes: %d\t\n",pageFault,diskRead,diskWrite);
