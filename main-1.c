@@ -341,7 +341,7 @@ void SfifoPRA( struct page_table *pt, int page) {
     
     pageFault++;
     
-    int i, j, k, replacement=1, secondFull=1;
+    int i, j, replacement=1;
     int frame;
     int *bits;
     bits = malloc(sizeof(int));
@@ -488,7 +488,7 @@ void customPRA( struct page_table *pt, int page) {
     //NOTE:
     //      ARE WE GOING TO KEEP SAME RATIO OF FIRST TO SECOND LIST????????????????????????????????????????
     
-    int i, j, k, replacement=1, secondFull=1;
+    int i, j, replacement=1;
     int frame;
     int dumbyFrame;
     int removedSecondPage = -1;
