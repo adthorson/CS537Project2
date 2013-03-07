@@ -474,5 +474,70 @@ void SfifoPRA( struct page_table *pt, int page) {
  */
 void customPRA( struct page_table *pt, int page) {
     
+    //NOTE:
+    //      ARE WE GOING TO KEEP SAME RATIO OF FIRST TO SECOND LIST????????????????????????????????????????
+    
+    
+     // If page fault occurred because a write was attempted to a read-only page, add PROT_WRITE bit
+
+     
+     // Check to see if there is an empty frame within the first queue and set replacement flag
+     // if there is, append the PTE to the empty frame
+     
+     
+     // If the first queue is Full, we begin to check if the second is empty
+
+     
+     // Check to see if there is an empty frame within the second queue and set replacement flag
+     // if there is, append the PTE to the empty frame
+
+    
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+     // NOTE: need to narrow in on x in order that it behaves according to the specs; need to tweek x
+     //
+     // IF the second queue is full, we must now page out from second queue
+    
+        // SET evicted = FALSE
+        // Pick a random double, R, where 0 <= R <= 1
+    
+        // IF 0 <= R < x, where 0 < x < 1, then
+    
+            // FOR LOOP: Iterate through 2nd list from head toward tail
+                // IF current iteration/frame is RD_ONLY
+                    // evict frame
+                    // SET evicted = TRUE
+                    // break
+                // END IF
+            // END FOR LOOP
+        // END IF
+        // IF evicted = FALSE
+            // evict head of 2nd list
+        // END IF
+    
+//------------------  NOT NECESSARY TOP  ---------------------------- DONT USE
+        // ELSE
+
+            // FOR LOOP: Iterate through 2nd list from head toward tail
+                // IF current iteration/frame is READ & WRITE (RW)
+                    // evict frame
+                    // SET evicted = TRUE
+                    // break
+                // END IF
+            // END FOR LOOP
+    
+            // IF evicted = FALSE
+                // evict head of 2nd list
+            // END IF
+        // END IF
+//------------------  NOT NECESSARY END  ----------------------------
+    
+    
+        // SHIFT ELEMENTS TOWARD REMOVED FRAME SECOND QUEUE
+    // END IF
+/////////////////////////////////////////////////////////////////////////////////////////////////////    
+    
+    
+    
+     // Shift elements towards head of First Queue    
 }
 
