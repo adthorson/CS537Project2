@@ -468,19 +468,18 @@ void SfifoPRA( struct page_table *pt, int page) {
         page_table_set_entry(pt, page, 0, PROT_READ); // map page to tail of first queue
         
     }
-    //printf("Page faults: %d\tDisk Reads: %d\tDisk Writes: %d\t\n",pageFault,diskRead,diskWrite);
+    printf("Page faults: %d\tDisk Reads: %d\tDisk Writes: %d\t\n",pageFault,diskRead,diskWrite);
     
     free(bits);
     
     
 }
 
-/*
- * Custom page replacement algorithm
- *
- *
- * @param
- */
+/* Custom page replacement algorithm
+*
+*
+* @param
+*/
 
 void customPRA( struct page_table *pt, int page) {
     
@@ -488,7 +487,7 @@ void customPRA( struct page_table *pt, int page) {
     //NOTE:
     //      ARE WE GOING TO KEEP SAME RATIO OF FIRST TO SECOND LIST????????????????????????????????????????
     
-    int i, j, replacement=1;
+    int i, j, k, replacement=1, secondFull=1;
     int frame;
     int dumbyFrame;
     int removedSecondPage = -1;
@@ -619,8 +618,8 @@ void customPRA( struct page_table *pt, int page) {
             
             
             page_table_get_entry(pt, removedSecondPage, &frame, bits);
-            if (*bits == (PROT_READ|PROT_WRITE)) {
-                disk_write(disk, removedSecondPage, &physmem[frame * PAGE_SIZE]);
+            if (*dumbyBits == (PROT_READ|PROT_WRITE)) {
+                disk_write(disk, removedSecondPage, &physmem[dumbyFrame * PAGE_SIZE]);
                 diskWrite++;
             }
             
