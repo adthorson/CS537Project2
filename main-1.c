@@ -278,7 +278,7 @@ void fifoPRA( struct page_table *pt, int page) {
         return;
     }
     
-    // Check to see if there is an empty frame and set replacement flag
+    // Check to see if there is an empty frame in the first queue and set replacement flag
     for (i=0; i < nframes; i++) {
         if (PFDB[i].VPN == -1) {
             //printf(" EMPTY i: %d ",i);
@@ -295,9 +295,7 @@ void fifoPRA( struct page_table *pt, int page) {
     // DO FIFO
     if (replacement == 1) {
         
-        //printf("DOFIFO ");
-        
-        // Remove head -- NEED TO CHECK IF WRITE BIT IS SET
+        // Remove head of first queue
         int removedPage = PFDB[0].VPN;
         
         page_table_get_entry(pt, removedPage, frame, bits);
@@ -358,8 +356,8 @@ void SfifoPRA( struct page_table *pt, int page) {
         page_table_set_entry(pt, page, frame, PROT_READ|PROT_WRITE);
         if (PFDB[frame].flags == 0) {
             //printf("REVIVE FRAME: %d\n",frame);
-            int phoenix = PFDB[frame].VPN;  // This is the frame which will move to the 1st queue
-            // Shift 2nd queue elements towards head
+            int phoenix = PFDB[frame].VPN;  // This is the frame which will move back to the 1st queue
+            // Shift 2nd queue elements towards head to open 2nd queue tail
             for (j = frame; j > tailOfSecondQueue; j--) {
                 PFDB[j].VPN = PFDB[j-1].VPN;
             }
@@ -367,29 +365,36 @@ void SfifoPRA( struct page_table *pt, int page) {
             int removedFirstPage = PFDB[headOfFirstQueue].VPN;
             PFDB[tailOfSecondQueue].VPN = removedFirstPage;
             // DO WE HAVE TO SET THIS IN THE PAGE TABLE?
-            page_table_set_entry(pt, removedFirstPage, tailOfSecondQueue, PROT_READ);
+            //page_table_set_entry(pt, removedFirstPage, tailOfSecondQueue, PROT_READ);
             
-            /*for (k = tailOfSecondQueue; k < nframes; k++) {
-             if (PFDB[k].VPN == -1) {
-             PFDB[k].VPN = removedFirstPage;
-             PFDB[k].flags = 0;
-             page_table_set_entry(pt, removedFirstPage, k, PROT_READ);  //DO WE HAVE TO USE THIS?
-             break;
-             }
-             }
-             */
-            // Shift first queue elements towards head
+            // Shift first queue elements towards head to make place for phoenix at tail
             for (j=headOfFirstQueue; j > 0; j--) {
                 PFDB[j] = PFDB[j-1];
             }
+            // Set phoenix to tail of first queue
             PFDB[0].VPN = phoenix;
             PFDB[0].flags = 1;
         }
         return;
     }
     
-    // Check to see if there is an empty frame within the first queue and set replacement flag
-    // if there is, append the PTE to the empty frame
+    // Check to see if there is space available in 1st. If so, shift towards head.
+    
+    /*if (PFDB[headOfFirstQueue].VPN == -1) {
+        for (i = headOfFirstQueue; i > 0; i--) {
+            PFDB[i].VPN = PFDB[i-1].VPN;
+        }
+        PFDB[0].VPN = page;
+        PFDB[0].flags = 1;
+        disk_read(disk, page, &physmem[0]);
+        diskRead++;
+        page_table_set_entry(pt, page, 0, PROT_READ);
+
+        replacement = 0;
+    }
+     */
+    
+    
     for (i=0; i < tailOfSecondQueue; i++) {
         //printf("CHECKING FOR EMPTY FRAME IN FIRST \n");
         if (PFDB[i].VPN == -1) {
@@ -406,12 +411,10 @@ void SfifoPRA( struct page_table *pt, int page) {
     }
     
     
-    // If the first queue is Full, we begin to check if the second is empty and push last frame of 1st queue to 2nd queue
+    // If the first queue is full, push head of 1st queue to tail of 2nd queue
     if (replacement == 1) {
         int removedFirstPage = PFDB[headOfFirstQueue].VPN;       // head from the first queue -> used to put in tail of second queue
         //printf("FIRST QUEUE FULL \n");
-        
-        // Check to see if there is an empty frame within the second queue and set replacement flag
         
         // Shift second queue if there is an empty spot
         if (PFDB[headOfSecondQueue].VPN == -1) {
@@ -440,11 +443,11 @@ void SfifoPRA( struct page_table *pt, int page) {
                 diskWrite++;
             }
             
-            
-            // Shift elements towards head of 2nd queue
+            // Shift elements towards head of 2nd queue, creating open spot at tail of 2nd
             for (i = headOfSecondQueue; i > tailOfSecondQueue; i--) {
                 PFDB[i].VPN = PFDB[i-1].VPN;
             }
+            
             
             PFDB[tailOfSecondQueue].VPN = removedFirstPage; // set new page to tail of second queue
             PFDB[tailOfSecondQueue].flags = 0;
@@ -454,7 +457,7 @@ void SfifoPRA( struct page_table *pt, int page) {
             
         }
         
-        // Shift elements towards head
+        // Shift elements towards head of 1st
         
         for (j = headOfFirstQueue; j > 0; j--) {
             PFDB[j].VPN = PFDB[j-1].VPN;
@@ -468,7 +471,7 @@ void SfifoPRA( struct page_table *pt, int page) {
         page_table_set_entry(pt, page, 0, PROT_READ); // map page to tail of first queue
         
     }
-    printf("Page faults: %d\tDisk Reads: %d\tDisk Writes: %d\t\n",pageFault,diskRead,diskWrite);
+    //printf("Page faults: %d\tDisk Reads: %d\tDisk Writes: %d\t\n",pageFault,diskRead,diskWrite);
     
     free(bits);
     
