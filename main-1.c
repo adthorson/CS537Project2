@@ -337,7 +337,7 @@ void SfifoPRA( struct page_table *pt, int page) {
     //Queue 1 = 75% (rounded down) of PFDB
     //Queue 2 = 25% of PFDB
     
-    //printf("PAGE: %d\n",page);
+    //printf("INCOMING PAGE: %d\n",page);
     
     int i, j, k, replacement=1, secondFull=1;
     int frame;
@@ -353,9 +353,8 @@ void SfifoPRA( struct page_table *pt, int page) {
     if (*bits == PROT_READ) {
         //printf("WRITE_BIT SET \n");
         page_table_set_entry(pt, page, frame, PROT_READ|PROT_WRITE);
-        //PFDB[frame].flags = 1;
         if (PFDB[frame].flags == 0) {
-            //printf("REVIVE FRAME: %d\n",frame);
+            printf("REVIVE FRAME: %d\n",frame);
             int phoenix = PFDB[frame].VPN;
             for (j=frame; j < nframes-1; j++) {
                 PFDB[j] = PFDB[j+1];
@@ -401,14 +400,14 @@ void SfifoPRA( struct page_table *pt, int page) {
     }
     
     
-    // If the first queue is Full, we begin to check if the second is empty
+    // If the first queue is Full, we begin to check if the second is empty and push last frame of 1st queue to 2nd queue 
     if (replacement == 1) {
         int removedFirstPage = PFDB[0].VPN;       // head from the first queue -> used to put in tail of second queue
         //printf("FIRST QUEUE FULL \n");
         
         // Check to see if there is an empty frame within the second queue and set replacement flag
         // if there is, append the PTE to the empty frame
-        for (i = headOfSecondQueue; i < nframes; i++) {
+        for (i = nframes-1; i >= headOfSecondQueue; i--) {
             if (PFDB[i].VPN == -1) {
                 PFDB[i].VPN = removedFirstPage;
                 PFDB[i].flags = 0;
@@ -419,10 +418,10 @@ void SfifoPRA( struct page_table *pt, int page) {
             }
         }
         
-        // If the second queue is full, we must now exchange from disk
+        // If the second queue is full
         if (replacement == 1) {
             //printf("SECOND QUEUE FULL\n");
-            int removedSecondPage = PFDB[headOfSecondQueue].VPN;
+            int removedSecondPage = PFDB[nframes-1].VPN;
             
             page_table_get_entry(pt, removedSecondPage, &frame, bits);
             if (*bits == (PROT_READ|PROT_WRITE)) {
@@ -474,70 +473,5 @@ void SfifoPRA( struct page_table *pt, int page) {
  */
 void customPRA( struct page_table *pt, int page) {
     
-    //NOTE:
-    //      ARE WE GOING TO KEEP SAME RATIO OF FIRST TO SECOND LIST????????????????????????????????????????
-    
-    
-     // If page fault occurred because a write was attempted to a read-only page, add PROT_WRITE bit
-
-     
-     // Check to see if there is an empty frame within the first queue and set replacement flag
-     // if there is, append the PTE to the empty frame
-     
-     
-     // If the first queue is Full, we begin to check if the second is empty
-
-     
-     // Check to see if there is an empty frame within the second queue and set replacement flag
-     // if there is, append the PTE to the empty frame
-
-    
-/////////////////////////////////////////////////////////////////////////////////////////////////////
-     // NOTE: need to narrow in on x in order that it behaves according to the specs; need to tweek x
-     //
-     // IF the second queue is full, we must now page out from second queue
-    
-        // SET evicted = FALSE
-        // Pick a random double, R, where 0 <= R <= 1
-    
-        // IF 0 <= R < x, where 0 < x < 1, then
-    
-            // FOR LOOP: Iterate through 2nd list from head toward tail
-                // IF current iteration/frame is RD_ONLY
-                    // evict frame
-                    // SET evicted = TRUE
-                    // break
-                // END IF
-            // END FOR LOOP
-        // END IF
-        // IF evicted = FALSE
-            // evict head of 2nd list
-        // END IF
-    
-//------------------  NOT NECESSARY TOP  ---------------------------- DONT USE
-        // ELSE
-
-            // FOR LOOP: Iterate through 2nd list from head toward tail
-                // IF current iteration/frame is READ & WRITE (RW)
-                    // evict frame
-                    // SET evicted = TRUE
-                    // break
-                // END IF
-            // END FOR LOOP
-    
-            // IF evicted = FALSE
-                // evict head of 2nd list
-            // END IF
-        // END IF
-//------------------  NOT NECESSARY END  ----------------------------
-    
-    
-        // SHIFT ELEMENTS TOWARD REMOVED FRAME SECOND QUEUE
-    // END IF
-/////////////////////////////////////////////////////////////////////////////////////////////////////    
-    
-    
-    
-     // Shift elements towards head of First Queue    
 }
 
