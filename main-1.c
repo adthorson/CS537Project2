@@ -377,7 +377,7 @@ void SfifoPRA( struct page_table *pt, int page) {
         }
         return;
     }
-    
+
     // Check to see if there is space available in 1st. If so, shift towards head.
     
     /*if (PFDB[headOfFirstQueue].VPN == -1) {
@@ -421,7 +421,7 @@ void SfifoPRA( struct page_table *pt, int page) {
 
         int firstFreeLocation;
             // DO WE HAVE TO SET THIS IN THE PAGE TABLE?
- 	for (j = headOfSecondQueue; j >= tailOfSecondQueue; j--) {
+		for (j = headOfSecondQueue; j >= tailOfSecondQueue; j--) {
             if(PFDB[j].VPN == -1){
 				firstFreeLocation = j;
 				replacement = 0;
