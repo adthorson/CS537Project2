@@ -55,7 +55,7 @@ double randomDouble;
 
 void randPRA( struct page_table *pt, int page);
 void fifoPRA( struct page_table *pt, int page);
-//void SfifoPRA( struct page_table *pt, int page);
+void SfifoPRA( struct page_table *pt, int page);
 void customPRA( struct page_table *pt, int page);
 void addFrameEntry( struct page_table *pt, int page);
 void removeFrameEntry( struct page_table *pt, int page);
@@ -112,6 +112,21 @@ int main( int argc, char *argv[] )
     disk = disk_open("myvirtualdisk",npages);
     PFDB = malloc(sizeof(struct frame) * nframes);
     
+ 
+	
+	
+	
+	int headOfFirstQueue = nframes - (nframes/4) - 1 ;
+    int tailOfSecondQueue = nframes - (nframes/4);
+    int headOfSecondQueue = nframes-1;
+	//printf("Queue looks like: \n [0] ... [%d] | [%d] .. [%d] \n",
+			//headOfFirstQueue, tailOfSecondQueue, headOfSecondQueue);
+	
+	
+	
+	
+	
+	
     // Initialize each VPN to -1 in PFDB
     for (i=0; i < nframes; i++) {
         PFDB[i].VPN = -1;
@@ -129,7 +144,7 @@ int main( int argc, char *argv[] )
         pt = page_table_create( npages, nframes, fifoPRA );
         
     } else if(!strcmp(PRA, "2fifo")) {
-        //pt = page_table_create( npages, nframes, SfifoPRA );
+        pt = page_table_create( npages, nframes, SfifoPRA );
         
     } else if(!strcmp(PRA, "custom")) {
         pt = page_table_create( npages, nframes, customPRA );
@@ -217,7 +232,7 @@ void randPRA( struct page_table *pt, int page) {
     
     if (replacement == 1) {
         //
-        //  SEE GLOBAL!!!!!!
+        // SEE GLOBAL!!!!!!
         //
         //unsigned short seedv[3];// = {1,1,1};
         //long seed48(seedv);
@@ -243,7 +258,7 @@ void randPRA( struct page_table *pt, int page) {
         page_table_set_entry(pt, removedPage, 0, 0); // dereference the page we removed from physical memory
         page_table_set_entry(pt, page, nframes-1, PROT_READ); // map page to last frame
     }
-    printf("Page faults: %d\tDisk Reads: %d\tDisk Writes: %d\n", pageFault, diskRead, diskWrite);
+    //printf("Page faults: %d\tDisk Reads: %d\tDisk Writes: %d\n", pageFault, diskRead, diskWrite);
     
     free(frame);
     free(bits);
@@ -278,7 +293,7 @@ void fifoPRA( struct page_table *pt, int page) {
         return;
     }
     
-    // Check to see if there is an empty frame and set replacement flag
+    // Check to see if there is an empty frame in the first queue and set replacement flag
     for (i=0; i < nframes; i++) {
         if (PFDB[i].VPN == -1) {
             //printf(" EMPTY i: %d ",i);
@@ -295,9 +310,7 @@ void fifoPRA( struct page_table *pt, int page) {
     // DO FIFO
     if (replacement == 1) {
         
-        //printf("DOFIFO ");
-        
-        // Remove head -- NEED TO CHECK IF WRITE BIT IS SET
+        // Remove head of first queue
         int removedPage = PFDB[0].VPN;
         
         page_table_get_entry(pt, removedPage, frame, bits);
@@ -321,7 +334,7 @@ void fifoPRA( struct page_table *pt, int page) {
         
         
     }
-    printf("Page faults: %d\tDisk Reads: %d\tDisk Writes: %d\n", pageFault, diskRead, diskWrite);
+    //printf("Page faults: %d\tDisk Reads: %d\tDisk Writes: %d\n", pageFault, diskRead, diskWrite);
     
     free(frame);
     free(bits);
@@ -333,68 +346,363 @@ void fifoPRA( struct page_table *pt, int page) {
  * Double List Queues
  * @param
  */
-/*void SfifoPRA( struct page_table *pt, int page) {
- //Queue 1 = 75% (rounded down) of PFDB
- //Queue 2 = 25% of PFDB
- 
- int i, j, replacement=1	;
- int *frame;
- int *bits;
- char *physmem =	page_table_get_physmem(pt);
- 
- page_table_get_entry(pt, page, frame, bits);
- 
- // If page fault occurred because a write was attempted to a read-only page, add PROT_WRITE bit
- if (*bits == PROT_READ) {
- page_table_set_entry(pt, page, *frame, PROT_READ|PROT_WRITE);
- //PFDB[frame].flags = 1;
- }
- 
- // Check to see if there is an empty frame within the first queue and set replacement flag
- for (i=0; i < (nframes/4); i++) {
- if (PFDB[i].VPN == -1) {
- PFDB[i].VPN = page;
- replacement = 0;
- break;
- }
- }
- 
- // If there is an empty frame within the first queue, use it
- if (replacement == 0) {
- page_table_set_entry(pt, page, i, PROT_READ);
- disk_read(disk, page, &physmem[i * BLOCK_SIZE]);
- }
- 
- // If the first queue is empty, we begin to check if the second is empty
- if (replacement == 1) {
- int removedFirstPage = PFDB[0].VPN;// head from the first queue -> used to put in tail of second queue
- 
- // Check to see if there is an empty frame within the second queue and set replacement flag
- for (i= ((nframes/4) +1); i < nframes; i++) {
- if (PFDB[i].VPN == -1) {
- PFDB[i].VPN = page;
- replacement = 0;
- break;
- }
- }
- 
- if (replacement == 1) {
- int removedSecondPage = PFDB[0].VPN;
- 
- 
- }
- }
- 
- 
- }
- 
- /*
- * Custom page replacement algorithm
- *
- *
- * @param
- */
-void customPRA( struct page_table *pt, int page) {
+void SfifoPRA( struct page_table *pt, int page) {
+    //Queue 1 = 75% (rounded down) of PFDB
+    //Queue 2 = 25% of PFDB
+    
+    //printf("\nINCOMING PAGE: %d\n",page);
+    
+    pageFault++;
+    
+    int i, j, replacement=1;
+    int frame;
+    int *bits;
+    bits = malloc(sizeof(int));
+    int headOfFirstQueue = nframes - (nframes/4) - 1 ;
+    int tailOfSecondQueue = nframes - (nframes/4);
+    int headOfSecondQueue = nframes-1;
+    physmem = page_table_get_physmem(pt);
+    
+    page_table_get_entry(pt, page, &frame, bits);
+    
+    // If page fault occurred because a write was attempted to a read-only page, add PROT_WRITE bit
+    if (*bits == PROT_READ) {
+        //printf("Incoming page has READONLY_BIT set -> change to R|W then exit \n");
+		int firstFreeLocation;
+        page_table_set_entry(pt, page, frame, PROT_READ|PROT_WRITE);
+        if (PFDB[frame].flags == 0) {
+            //printf("REVIVE FRAME: %d\n",frame);
+            int phoenix = PFDB[frame].VPN;  // This is the frame which will move back to the 1st queue
+            // Shift 2nd queue elements towards head to open 2nd queue tail
+            for (j = frame; j > tailOfSecondQueue; j--) {
+                PFDB[j].VPN = PFDB[j-1].VPN;
+            }
+			PFDB[tailOfSecondQueue].VPN = -1;
+			for (j = headOfSecondQueue; j >= tailOfSecondQueue; j--) {
+				if(PFDB[j].VPN == -1){
+					firstFreeLocation = j;
+					replacement = 0;
+					break;
+				}
+			}
+            int removedFirstPage = PFDB[headOfFirstQueue].VPN;
+            PFDB[firstFreeLocation].VPN = removedFirstPage;
+            // DO WE HAVE TO SET THIS IN THE PAGE TABLE?t
+            //page_table_set_entry(pt, removedFirstPage, tailOfSecondQueue, PROT_READ);
+            
+            // Shift first queue elements towards head to make place for phoenix at tail
+            for (j=headOfFirstQueue; j > 0; j--) {
+                PFDB[j] = PFDB[j-1];
+            }
+            // Set phoenix to tail of first queue
+            PFDB[0].VPN = phoenix;
+            PFDB[0].flags = 1;
+        }
+        return;
+    }
+
+    // Check to see if there is space available in 1st. If so, shift towards head.
+    
+    /*if (PFDB[headOfFirstQueue].VPN == -1) {
+        for (i = headOfFirstQueue; i > 0; i--) {
+            PFDB[i].VPN = PFDB[i-1].VPN;
+        }
+        PFDB[0].VPN = page;
+        PFDB[0].flags = 1;
+        disk_read(disk, page, &physmem[0]);
+        diskRead++;
+        page_table_set_entry(pt, page, 0, PROT_READ);
+
+        replacement = 0;
+    }
+     */
+    
+    
+    // THIS NEEDS TO BE REVERSED
+    
+    for (i=headOfFirstQueue; i >= 0; i--) {
+        //printf("CHECKING FOR EMPTY FRAME IN FIRST \n");
+        if (PFDB[i].VPN == -1) {
+            PFDB[i].VPN = page;
+            PFDB[i].flags = 1;
+            //printf("flag is now: %d\n", PFDB[i].flags);
+            page_table_get_entry(pt, page, &frame, bits);
+            disk_read(disk, page, &physmem[frame * PAGE_SIZE]);
+			//printf(" -> read from disk onto PFDB %d\n", i);
+            diskRead++;
+            page_table_set_entry(pt, page, i, PROT_READ);
+			//printf("page %d is now mapped to frame %d\n", page, i);
+            replacement = 0;
+            
+            break;
+        }
+    }
+    
+    
+    // If the first queue is full, push head of 1st queue to tail of 2nd queue
+    if (replacement == 1) {
+        int removedFirstPage = PFDB[headOfFirstQueue].VPN;       // head from the first queue -> used to put in tail of second queue
+        //printf("FIRST QUEUE FULL \n");
+        
+
+        int firstFreeLocation;
+            // DO WE HAVE TO SET THIS IN THE PAGE TABLE?
+		for (j = headOfSecondQueue; j >= tailOfSecondQueue; j--) {
+            if(PFDB[j].VPN == -1){
+				firstFreeLocation = j;
+				replacement = 0;
+				break;
+			}
+        }
+		if(replacement == 0){
+			PFDB[firstFreeLocation].VPN = removedFirstPage;
+			PFDB[firstFreeLocation].flags = 0;
+			replacement = 0;
+			//printf("There is a free spot in queue2, So we move page %d into second queue position %d in PFDB\n"
+				//, removedFirstPage, firstFreeLocation);
+			page_table_get_entry(pt, removedFirstPage, &frame, bits);
+            page_table_set_entry(pt, removedFirstPage, firstFreeLocation, *bits);
+			//printf("page %d is actually in frame %d\n", removedFirstPage, frame);
+        }
+        
+        // If the second queue is full
+        if (replacement == 1) {
+           // printf("SECOND QUEUE FULL\n");
+            int removedSecondPage = PFDB[headOfSecondQueue].VPN;
+            
+            // Write back to disk if the evicted frame has write bit set
+            // Maybe the problem is here?
+            page_table_get_entry(pt, removedSecondPage, &frame, bits);
+            if (*bits == (PROT_READ|PROT_WRITE)) {
+				//printf("page %d has bits R|W we write back to disk \n", removedSecondPage);
+                disk_write(disk, removedSecondPage, &physmem[frame * PAGE_SIZE]);
+				//printf("-> page %d from frame %d is written to disk\n", removedSecondPage, frame);
+                diskWrite++;
+            }
+            
+            // Shift elements towards head of 2nd queue, creating open spot at tail of 2nd
+            for (i = headOfSecondQueue; i > tailOfSecondQueue; i--) {
+                PFDB[i].VPN = PFDB[i-1].VPN;
+                page_table_get_entry(pt, PFDB[i].VPN, &frame, bits);
+                page_table_set_entry(pt, PFDB[i].VPN, i, *bits);
+            }
+            
+            PFDB[tailOfSecondQueue].VPN = removedFirstPage; // set new page to tail of second queue
+            PFDB[tailOfSecondQueue].flags = 0;
+            //printf("flag is now: %d\n", PFDB[nframes-1].flags);
+            page_table_set_entry(pt, removedSecondPage, 0, 0); // dereference the page we removed from physical memory
+            //page_table_set_entry(pt, removedFirstPage, headOfSecondQueue, PROT_READ); // map page to last frame
+            
+        }
+        
+        // Shift elements towards head of 1st
+        
+        for (j = headOfFirstQueue; j > 0; j--) {
+            PFDB[j].VPN = PFDB[j-1].VPN;
+            page_table_get_entry(pt, PFDB[j].VPN, &frame, bits);
+            page_table_set_entry(pt, PFDB[j].VPN, j, *bits);
+        }
+        
+        PFDB[0].VPN = page;
+        PFDB[0].flags = 1;
+        //printf("flag is now: %d\n", PFDB[headOfFirstQueue-1].flags);
+        disk_read(disk, page, &physmem[0]); // read page from disk to physical memory
+		//printf(" -> read from disk onto frame 0\n");
+        diskRead++;
+        page_table_set_entry(pt, page, 0, PROT_READ); // map page to tail of first queue
+		//printf("page %d is now mapped to frame %d\n", page, 0);
+        
+    }
+    //printf("Page faults: %d\tDisk Reads: %d\tDisk Writes: %d\t\n",pageFault,diskRead,diskWrite);
+    //page_table_print(pt);
+    free(bits);
+    
     
 }
 
+/* Custom page replacement algorithm
+*
+*
+* @param
+*/
+
+void customPRA( struct page_table *pt, int page) {
+    
+    ++pageFault;
+    //NOTE:
+    //      ARE WE GOING TO KEEP SAME RATIO OF FIRST TO SECOND LIST????????????????????????????????????????
+    
+    int i, j, k, replacement=1, secondFull=1;
+    int frame;
+    int dumbyFrame;
+    int removedSecondPage = -1;
+    int removedIndex;
+    
+    int *bits;
+    bits = malloc(sizeof(int));
+    int *dumbyBits;
+    dumbyBits = malloc(sizeof(int));
+    
+    int headOfFirstQueue = nframes - (nframes/2)-1;
+    int tailOfSecondQueue = nframes - (nframes/2);
+    physmem = page_table_get_physmem(pt);
+    
+    page_table_get_entry(pt, page, &frame, bits);
+    
+    // If page fault occurred because a write was attempted to a read-only page, add PROT_WRITE bit
+    if (*bits == PROT_READ) {
+        //printf("WRITE_BIT SET \n");
+        page_table_set_entry(pt, page, frame, PROT_READ|PROT_WRITE);
+        if (PFDB[frame].flags == 0) {
+            //printf("REVIVE FRAME: %d\n",frame);
+            int phoenix = PFDB[frame].VPN; // This is the frame which will move to the 1st queue
+            // Shift 2nd queue elements towards head
+            for (j = frame; j > tailOfSecondQueue; j--) {
+                PFDB[j].VPN = PFDB[j-1].VPN;
+            }
+            PFDB[tailOfSecondQueue].VPN = -1;
+            int removedFirstPage = PFDB[headOfFirstQueue].VPN;
+            PFDB[tailOfSecondQueue].VPN = removedFirstPage;
+            // DO WE HAVE TO SET THIS IN THE PAGE TABLE?
+            page_table_set_entry(pt, removedFirstPage, tailOfSecondQueue, PROT_READ);
+            
+            /*for (k = tailOfSecondQueue; k < nframes; k++) {
+             if (PFDB[k].VPN == -1) {
+             PFDB[k].VPN = removedFirstPage;
+             PFDB[k].flags = 0;
+             page_table_set_entry(pt, removedFirstPage, k, PROT_READ); //DO WE HAVE TO USE THIS?
+             break;
+             }
+             }
+             */
+            // Shift first queue elements towards head
+            for (j=headOfFirstQueue; j > 0; j--) {
+                PFDB[j] = PFDB[j-1];
+            }
+            PFDB[0].VPN = phoenix;
+            PFDB[0].flags = 1;
+        }
+        return;
+    }
+    
+    // Check to see if there is an empty frame within the first queue and set replacement flag
+    // if there is, append the PTE to the empty frame
+    for (i=0; i < tailOfSecondQueue; i++) {
+        //printf("CHECKING FOR EMPTY FRAME IN FIRST \n");
+        if (PFDB[i].VPN == -1) {
+            PFDB[i].VPN = page;
+            PFDB[i].flags = 1;
+            //printf("flag is now: %d\n", PFDB[i].flags);
+            disk_read(disk, page, &physmem[i * PAGE_SIZE]);
+            diskRead++;
+            page_table_set_entry(pt, page, i, PROT_READ);
+            replacement = 0;
+            
+            break;
+        }
+    }
+    
+    
+    // If the first queue is Full, we begin to check if the second is empty and push last frame of 1st queue to 2nd queue
+    if (replacement == 1) {
+        int removedFirstPage = PFDB[headOfFirstQueue].VPN; // head from the first queue -> used to put in tail of second queue
+        //printf("FIRST QUEUE FULL \n");
+        
+        // Check to see if there is an empty frame within the second queue and set replacement flag
+        // if there is, append the PTE to the empty frame
+        
+        // Shift second queue if there is an empty spot
+        if (PFDB[nframes-1].VPN == -1) {
+            for (i = nframes-1; i > tailOfSecondQueue; i--) {
+                PFDB[i].VPN = PFDB[i-1].VPN;
+            }
+            PFDB[tailOfSecondQueue].VPN = removedFirstPage;
+            PFDB[tailOfSecondQueue].flags = 0;
+            replacement = 0;
+            
+            //page_table_set_entry(pt, removedFirstPage, tailOfSecondQueue, PROT_READ);
+            // DO WE HAVE TO UPDATE PAGE TABLE?
+        }
+        
+        
+        
+        
+        if (replacement == 1) {
+            //printf("SECOND QUEUE FULL\n");
+            
+            
+            //DECIDE WHAT THIS SHOULD BE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            //
+            //DECIDE WHAT THIS SHOULD BE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            //
+            //
+            double tweekValue = 0.95;
+            
+            randomDouble = drand48();
+            //printf("Double: %1.5f\n",randomDouble);
+            
+            //WHICH PAGE TO REMOVE???
+            if(randomDouble < tweekValue){
+                for (j = nframes - 1; j > tailOfSecondQueue - 1; --j){
+                    page_table_get_entry(pt, PFDB[j].VPN, &dumbyFrame, dumbyBits);
+                    if (*dumbyBits == PROT_READ) {
+                        //AT BEGINNING, removedSecondPage = -1
+                        removedSecondPage = PFDB[j].VPN;
+                        removedIndex = j;
+                        //printf("READ BITS\n\n");
+                        break;
+                    }
+                }
+            }
+            //IF DIDN'T ENCOUNTER RD_ONLY OR DOESN'T MATTER WHAT VALUE...
+            if(removedSecondPage == -1){
+                removedSecondPage = PFDB[nframes - 1].VPN;
+                removedIndex = nframes - 1;
+            }
+            
+            
+            
+            page_table_get_entry(pt, removedSecondPage, &frame, bits);
+            if (*dumbyBits == (PROT_READ|PROT_WRITE)) {
+                disk_write(disk, removedSecondPage, &physmem[dumbyFrame * PAGE_SIZE]);
+                diskWrite++;
+            }
+            
+            
+            // Shift elements towards head/removed element
+            for (j = removedIndex; j > tailOfSecondQueue; --j) {
+                PFDB[j].VPN = PFDB[j-1].VPN;
+            }
+            
+            
+            PFDB[tailOfSecondQueue].VPN = removedFirstPage; // set new page to head of second queue
+            PFDB[tailOfSecondQueue].flags = 0;
+            //printf("flag is now: %d\n", PFDB[nframes-1].flags);
+            //disk_read(disk, removedFirstPage, &physmem[(nframes-1) * BLOCK_SIZE]); // write page from disk to physical memory
+            //diskRead++;
+            page_table_set_entry(pt, removedSecondPage, 0, 0); // dereference the page we removed from physical memory
+            //page_table_set_entry(pt, removedFirstPage, headOfSecondQueue, PROT_READ); // map page to last frame
+            
+        }
+        
+        // Shift elements towards head
+        
+        for (j = headOfFirstQueue; j > 0; j--) {
+            PFDB[j].VPN = PFDB[j-1].VPN;
+        }
+        
+        PFDB[0].VPN = page;
+        PFDB[0].flags = 1;
+        //printf("flag is now: %d\n", PFDB[headOfFirstQueue-1].flags);
+        disk_read(disk, page, &physmem[0]); // write page from disk to physical memory
+        diskRead++;
+        page_table_set_entry(pt, page, 0, PROT_READ); // map page to last frame
+        
+    }
+    
+    printf("Page faults: %d\tDisk Reads: %d\tDisk Writes: %d\t\n",pageFault,diskRead,diskWrite);
+    
+    free(bits);
+    free(dumbyBits);
+    
+}
