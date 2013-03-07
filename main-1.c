@@ -418,15 +418,20 @@ void SfifoPRA( struct page_table *pt, int page) {
         int removedFirstPage = PFDB[headOfFirstQueue].VPN;       // head from the first queue -> used to put in tail of second queue
         //printf("FIRST QUEUE FULL \n");
         
-        // Shift second queue if there is an empty spot
-        if (PFDB[tailOfSecondQueue].VPN == -1) {
-            PFDB[tailOfSecondQueue].VPN = removedFirstPage;
-            PFDB[tailOfSecondQueue].flags = 0;
-            replacement = 0;
+
+        int firstFreeLocation;
+            // DO WE HAVE TO SET THIS IN THE PAGE TABLE?
+ 	for (j = headOfSecondQueue; j >= tailOfSecondQueue; j--) {
+            if(PFDB[j].VPN == -1){
+				firstFreeLocation = j;
+				replacement = 0;
+				break;
+			}
         }
-        
-            //page_table_set_entry(pt, removedFirstPage, tailOfSecondQueue, PROT_READ);
-            // DO WE HAVE TO UPDATE PAGE TABLE?
+		if(replacement == 0){
+			PFDB[firstFreeLocation].VPN = removedFirstPage;
+			PFDB[firstFreeLocation].flags = 0;
+			replacement = 0;
         }
         
         // If the second queue is full
