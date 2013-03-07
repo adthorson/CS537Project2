@@ -390,6 +390,7 @@ void SfifoPRA( struct page_table *pt, int page) {
         if (PFDB[i].VPN == -1) {
             PFDB[i].VPN = page;
             PFDB[i].flags = 1;
+            //printf("flag is now: %d\n", PFDB[i].flags);
             page_table_set_entry(pt, page, i, PROT_READ);
             disk_read(disk, page, &physmem[i * PAGE_SIZE]);
             diskRead++;
@@ -411,6 +412,7 @@ void SfifoPRA( struct page_table *pt, int page) {
             if (PFDB[i].VPN == -1) {
                 PFDB[i].VPN = removedFirstPage;
                 PFDB[i].flags = 0;
+                //printf("flag is now: %d\n", PFDB[i].flags);
                 replacement = 0;
                 
                 break;
@@ -419,7 +421,7 @@ void SfifoPRA( struct page_table *pt, int page) {
         
         // If the second queue is full, we must now exchange from disk
         if (replacement == 1) {
-            //printf("SECOND FULL\n");
+            //printf("SECOND QUEUE FULL\n");
             int removedSecondPage = PFDB[headOfSecondQueue].VPN;
             
             page_table_get_entry(pt, removedSecondPage, &frame, bits);
@@ -436,10 +438,11 @@ void SfifoPRA( struct page_table *pt, int page) {
             
             PFDB[nframes-1].VPN = removedFirstPage; // set new page to tail of second queue
             PFDB[nframes-1].flags = 0;
-            disk_read(disk, removedFirstPage, &physmem[(nframes-1) * BLOCK_SIZE]); // write page from disk to physical memory
-            diskRead++;
+            //printf("flag is now: %d\n", PFDB[nframes-1].flags);
+            //disk_read(disk, removedFirstPage, &physmem[(nframes-1) * BLOCK_SIZE]); // write page from disk to physical memory
+            //diskRead++;
             page_table_set_entry(pt, removedSecondPage, 0, 0); // dereference the page we removed from physical memory
-            page_table_set_entry(pt, removedFirstPage, nframes-1, PROT_READ); // map page to last frame
+            //page_table_set_entry(pt, removedFirstPage, nframes-1, PROT_READ); // map page to last frame
             
         }
         
@@ -451,6 +454,7 @@ void SfifoPRA( struct page_table *pt, int page) {
         
         PFDB[tailOfFirstQueue-1].VPN = page; // set new page to tail of first queue
         PFDB[tailOfFirstQueue-1].flags = 1;
+        //printf("flag is now: %d\n", PFDB[tailOfFirstQueue-1].flags);
         disk_read(disk, page, &physmem[(tailOfFirstQueue-1) * BLOCK_SIZE]); // write page from disk to physical memory
         diskRead++;
         page_table_set_entry(pt, page, tailOfFirstQueue-1, PROT_READ); // map page to last frame
