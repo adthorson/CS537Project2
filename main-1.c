@@ -112,6 +112,21 @@ int main( int argc, char *argv[] )
     disk = disk_open("myvirtualdisk",npages);
     PFDB = malloc(sizeof(struct frame) * nframes);
     
+	
+	
+	
+	
+	int headOfFirstQueue = nframes - (nframes/4) - 1 ;
+    int tailOfSecondQueue = nframes - (nframes/4);
+    int headOfSecondQueue = nframes-1;
+	printf("Queue looks like: \n [0] ... [%d] | [%d] .. [%d] \n",
+			headOfFirstQueue, tailOfSecondQueue, headOfSecondQueue);
+	
+	
+	
+	
+	
+	
     // Initialize each VPN to -1 in PFDB
     for (i=0; i < nframes; i++) {
         PFDB[i].VPN = -1;
@@ -411,8 +426,9 @@ void SfifoPRA( struct page_table *pt, int page) {
             PFDB[i].VPN = page;
             PFDB[i].flags = 1;
             //printf("flag is now: %d\n", PFDB[i].flags);
-            disk_read(disk, page, &physmem[i * PAGE_SIZE]);
-			printf(" -> read from disk onto frame %d\n", i);
+            page_table_get_entry(pt, page, &frame, bits);
+            disk_read(disk, page, &physmem[frame * PAGE_SIZE]);
+			printf(" -> read from disk onto PFDB %d\n", i);
             diskRead++;
             page_table_set_entry(pt, page, i, PROT_READ);
 			printf("page %d is now mapped to frame %d\n", page, i);
@@ -442,7 +458,11 @@ void SfifoPRA( struct page_table *pt, int page) {
 			PFDB[firstFreeLocation].VPN = removedFirstPage;
 			PFDB[firstFreeLocation].flags = 0;
 			replacement = 0;
-			printf("There is a free spot in queue2, So we write into second queue \n");
+			printf("There is a free spot in queue2, So we move page %d into second queue position %d in PFDB\n"
+				, removedFirstPage, firstFreeLocation);
+			page_table_get_entry(pt, removedFirstPage, &frame, bits);
+            page_table_set_entry(pt, removedFirstPage, firstFreeLocation, *bits);
+			printf("page %d is actually in frame %d\n", removedFirstPage, frame);
         }
         
         // If the second queue is full
@@ -456,15 +476,16 @@ void SfifoPRA( struct page_table *pt, int page) {
             if (*bits == (PROT_READ|PROT_WRITE)) {
 				printf("page %d has bits R|W we write back to disk \n", removedSecondPage);
                 disk_write(disk, removedSecondPage, &physmem[frame * PAGE_SIZE]);
-				printf("-> page %d from frame %d is written to disk\n", page, frame);
+				printf("-> page %d from frame %d is written to disk\n", removedSecondPage, frame);
                 diskWrite++;
             }
             
             // Shift elements towards head of 2nd queue, creating open spot at tail of 2nd
             for (i = headOfSecondQueue; i > tailOfSecondQueue; i--) {
                 PFDB[i].VPN = PFDB[i-1].VPN;
+                page_table_get_entry(pt, PFDB[i].VPN, &frame, bits);
+                page_table_set_entry(pt, PFDB[i].VPN, i, *bits);
             }
-            
             
             PFDB[tailOfSecondQueue].VPN = removedFirstPage; // set new page to tail of second queue
             PFDB[tailOfSecondQueue].flags = 0;
@@ -478,6 +499,8 @@ void SfifoPRA( struct page_table *pt, int page) {
         
         for (j = headOfFirstQueue; j > 0; j--) {
             PFDB[j].VPN = PFDB[j-1].VPN;
+            page_table_get_entry(pt, PFDB[j].VPN, &frame, bits);
+            page_table_set_entry(pt, PFDB[j].VPN, j, *bits);
         }
         
         PFDB[0].VPN = page;
@@ -487,11 +510,11 @@ void SfifoPRA( struct page_table *pt, int page) {
 		printf(" -> read from disk onto frame 0\n");
         diskRead++;
         page_table_set_entry(pt, page, 0, PROT_READ); // map page to tail of first queue
-		printf("page %d is now mapped to frame %d\n", page, i);
+		printf("page %d is now mapped to frame %d\n", page, 0);
         
     }
     //printf("Page faults: %d\tDisk Reads: %d\tDisk Writes: %d\t\n",pageFault,diskRead,diskWrite);
-    
+    page_table_print(pt);
     free(bits);
     
     
