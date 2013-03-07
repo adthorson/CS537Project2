@@ -395,7 +395,9 @@ void SfifoPRA( struct page_table *pt, int page) {
      */
     
     
-    for (i=0; i < tailOfSecondQueue; i++) {
+    // THIS NEEDS TO BE REVERSED
+    
+    for (i=headOfFirstQueue; i >= 0; i--) {
         //printf("CHECKING FOR EMPTY FRAME IN FIRST \n");
         if (PFDB[i].VPN == -1) {
             PFDB[i].VPN = page;
@@ -417,14 +419,12 @@ void SfifoPRA( struct page_table *pt, int page) {
         //printf("FIRST QUEUE FULL \n");
         
         // Shift second queue if there is an empty spot
-        if (PFDB[headOfSecondQueue].VPN == -1) {
-            for (i = headOfSecondQueue; i > tailOfSecondQueue; i--) {
-                PFDB[i].VPN = PFDB[i-1].VPN;
-            }
+        if (PFDB[tailOfSecondQueue].VPN == -1) {
             PFDB[tailOfSecondQueue].VPN = removedFirstPage;
             PFDB[tailOfSecondQueue].flags = 0;
             replacement = 0;
-            
+        }
+        
             //page_table_set_entry(pt, removedFirstPage, tailOfSecondQueue, PROT_READ);
             // DO WE HAVE TO UPDATE PAGE TABLE?
         }
