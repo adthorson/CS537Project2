@@ -112,7 +112,7 @@ int main( int argc, char *argv[] )
     disk = disk_open("myvirtualdisk",npages);
     PFDB = malloc(sizeof(struct frame) * nframes);
     
- 
+	
 	
 	
 	
@@ -350,7 +350,7 @@ void SfifoPRA( struct page_table *pt, int page) {
     //Queue 1 = 75% (rounded down) of PFDB
     //Queue 2 = 25% of PFDB
     
-    //printf("\nINCOMING PAGE: %d\n",page);
+    printf("\nINCOMING PAGE: %d\n",page);
     
     pageFault++;
     
@@ -417,9 +417,6 @@ void SfifoPRA( struct page_table *pt, int page) {
     }
      */
     
-    
-    // THIS NEEDS TO BE REVERSED
-    
     for (i=headOfFirstQueue; i >= 0; i--) {
         //printf("CHECKING FOR EMPTY FRAME IN FIRST \n");
         if (PFDB[i].VPN == -1) {
@@ -481,7 +478,7 @@ void SfifoPRA( struct page_table *pt, int page) {
             }
             
             // Shift elements towards head of 2nd queue, creating open spot at tail of 2nd
-            for (i = headOfSecondQueue; i > tailOfSecondQueue; i--) {
+            for (i = headOfSecondQueue; i >= tailOfSecondQueue; i--) {
                 PFDB[i].VPN = PFDB[i-1].VPN;
                 page_table_get_entry(pt, PFDB[i].VPN, &frame, bits);
                 page_table_set_entry(pt, PFDB[i].VPN, i, *bits);
@@ -506,7 +503,7 @@ void SfifoPRA( struct page_table *pt, int page) {
         PFDB[0].VPN = page;
         PFDB[0].flags = 1;
         //printf("flag is now: %d\n", PFDB[headOfFirstQueue-1].flags);
-        disk_read(disk, page, &physmem[0]); // read page from disk to physical memory
+        disk_read(disk, PFDB[0].VPN, &physmem[0]); // read page from disk to physical memory
 		//printf(" -> read from disk onto frame 0\n");
         diskRead++;
         page_table_set_entry(pt, page, 0, PROT_READ); // map page to tail of first queue
